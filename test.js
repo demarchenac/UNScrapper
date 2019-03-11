@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const filePath = path.join(__dirname, 'NRCs.txt');
+
+
+
 function copyData(savPath, srcPath) {
     fs.readFile(srcPath, 'utf8', function (err, data) {
         if (err) throw err;
