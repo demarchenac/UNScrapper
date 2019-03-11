@@ -5,6 +5,7 @@ const _horario = 'https://guayacan.uninorte.edu.co/registro_pruebas/consulta_hor
 
 var d_i = 0;
 var n_i = 0;
+var pushed = 0;
 
 let NRCS = [];
 rp(_horario)
@@ -69,14 +70,21 @@ rp(_horario)
                                         }else{
                                             $("tbody tr", data).each((i) => {
                                                 if(i > 0){
-                                                    let info = periodo +";" 
-                                                               +nivel +";" 
-                                                               +dpto +";"
-                                                               +nrc +";"
-                                                               +$($("tbody tr td", data)[3], data).text() +";"
-                                                               +$($("tbody tr td", data)[4], data).text() +";"
-                                                               +$($("tbody tr td", data)[5], data).text()
-                                                    NRCS.push(info);
+                                                    if($($("tbody tr td", data)[4], data).text().length <= 4){
+                                                        console.log("Invalid args!");
+                                                    }else if($($("tbody tr td", data)[5], data).text().length <= 4){
+                                                        console.log("Invalid args!");
+                                                    }else{
+                                                        pushed++;
+                                                        let info = periodo +";" 
+                                                                +nivel +";" 
+                                                                +dpto +";"
+                                                                +nrc +";"
+                                                                +$($("tbody tr td", data)[3], data).text() +";"
+                                                                +$($("tbody tr td", data)[4], data).text() +";"
+                                                                +$($("tbody tr td", data)[5], data).text()
+                                                        NRCS.push(info);
+                                                    }
                                                 }
                                             });  
                                         }
@@ -95,6 +103,7 @@ rp(_horario)
         }
         setTimeout( 
             () =>{
+                console.log("data in arr: " +pushed);
                 console.log("removing repeated data!");
                 let uniqueNRC = unique(NRCS);
                 console.log("writing in file!")
