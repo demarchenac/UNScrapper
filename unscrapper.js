@@ -1,126 +1,231 @@
 const fs = require('fs');
+const path = require('path');
 const rp = require('request-promise');
 const $ = require('cheerio');
-const _horario = 'https://guayacan.uninorte.edu.co/registro_pruebas/consulta_horarios.asp';
+const _DOMAIN = '';
+const _SCHEDULE = 'consulta_horarios.asp';
+const filePath = path.join(__dirname, 'lessons.json');
 
-var d_i = 0;
-var n_i = 0;
-var pushed = 0;
+var lessons = [];
 
-let NRCS = [];
-rp(_horario)
-  .then(function(html){
-        var dptos = [];
-        $('#departamento option', html).each((i) => {
-            if(i > 1){
-                dptos.push($('#departamento option', html)[i].attribs.value);
-            }
-        });
-        let el_periodo = $('#periodo option', html);
-        let periodo = el_periodo[1].attribs.value;
-        var niveles = [];
-        $('#nivel option', html).each((i, el) => {
-            if(i > 0){
-                niveles.push($('#nivel option', html)[i].attribs.value);
-            }
-        });
-        for(let nivel of niveles){
-            let nombre = "";
-            nivel === "PR"? nombre = "Pregrado" : ""; 
-            nivel === "PG"? nombre = "Postgrado" : ""; 
-            nivel === "EC"? nombre = "Educación Continua" : ""; 
-            nivel === "EX"? nombre = "Extracurricular" : ""; 
-            for(let dpto of dptos){
-                let options_dpto = {
-                    method: 'POST',
-                    uri: 'https://guayacan.uninorte.edu.co/registro_pruebas/resultado_departamento1.php',
-                    formData: {
-                        departamento: dpto,
-                        valida: 'OK',
-                        datos_periodo: periodo,
-                        nom_periodo: 'Primer Semestre 2019',
-                        datos_nivel: nivel,
-                        nom_nivel: nombre,
-                        BtnNRC: 'NRC'
-                    }
-                }
-                rp(options_dpto)
-                    .then((data) => {
-                        d_i++;
-                        console.log("+d_i: " +d_i);
-                        $('#programa option', data).each((i, el)=>{
-                            if(i > 0){
-                                
-                                let nrc = $(el).text().split("-")[0].slice(0, -1);
-                                let options_nrc = {
-                                    method: 'POST',
-                                    uri: 'https://guayacan.uninorte.edu.co/registro_pruebas/acreditaciones_resultado.php',
-                                    formData: {
-                                        elegido: nrc,
-                                        periodo: periodo
-                                    } 
-                                }
-                                rp(options_nrc)
-                                 .then((data) => {
-                                     n_i++;
-                                     console.log("-n_i: " +n_i)
-                                     if($("div p strong",data)[3].next.data){
-                                        if($("div p strong",data)[3].next.data.split("\\")[0] === "0"){
-                                            console.log("empty");
-                                        }else{
-                                            $("tbody tr", data).each((i) => {
-                                                if(i > 0){
-                                                    if($($("tbody tr td", data)[4], data).text().length <= 4){
-                                                        console.log("Invalid args!");
-                                                    }else if($($("tbody tr td", data)[5], data).text().length <= 4){
-                                                        console.log("Invalid args!");
-                                                    }else{
-                                                        pushed++;
-                                                        let info = periodo +";" 
-                                                                +nivel +";" 
-                                                                +dpto +";"
-                                                                +nrc +";"
-                                                                +$($("tbody tr td", data)[3], data).text() +";"
-                                                                +$($("tbody tr td", data)[4], data).text() +";"
-                                                                +$($("tbody tr td", data)[5], data).text()
-                                                        NRCS.push(info);
-                                                    }
-                                                }
-                                            });  
-                                        }
-                                    }else{
-                                        console.log("undefined");
-                                    }
-                                 })
-                                 .catch((err) => { console.log("ERR 003 AT LOADING NRC INFO!"
-                                                              +"\nRequests made " +n_i); });
-                            }
-                        });
-                    })
-                    .catch((err) => { console.log("ERR 002 AT LOADING DEPARTMENTS!" 
-                                                 +"\nRequests made " +d_i); });
-            }
-        }
-        setTimeout( 
-            () =>{
-                console.log("data in arr: " +pushed);
-                console.log("removing repeated data!");
-                let uniqueNRC = unique(NRCS);
-                console.log("writing in file!")
-                var file = fs.createWriteStream('NRCs.txt');
-                file.on('error', function(err) { console.log("ERR 004 AT FILE WRITING!"); });
-                uniqueNRC.forEach((element, i) => {
-                    console.log("writing line #" +i);
-                    file.write(element +"\n");
-                });
-                file.end();
-            }, 300000);
-    })
-    .catch(function(err){ console.log("ERR 001 AT MAIN HTML READING!"); });
+const rng = (min, max) => {
+	return 1000 * Math.ceil(Math.random() * (max - min) + min);
+};
 
-function unique(arr) {
-    var seen = {};
-    return arr.filter(function(item) {
-        return seen.hasOwnProperty(item) ? false : (seen[item] = true);
-    });
-}
+const querySemesterInfo = () => {
+	return new Promise((resolve, reject) => {
+		setTimeout(() => {
+			rp(_DOMAIN + _SCHEDULE)
+				.then((html) => {
+					let departamentos = [];
+					$('#departamento option', html).each((i, el) => {
+						if (i > 0) {
+							departamentos.push(el.attribs.value);
+						}
+					});
+					let start = 1;
+					let p_regex = new RegExp(/\d{4}(10|30)/g);
+					while (!p_regex.test($('#periodo option', html)[start].attribs.value)) {
+						start++;
+					}
+					let periodo = $('#periodo option', html)[start].attribs.value;
+					let niveles = [];
+					$('#nivel option', html).each((i, el) => {
+						if (i > 0) {
+							niveles.push(el.attribs.value);
+						}
+					});
+					let response = {
+						_periodo       : periodo,
+						_niveles       : niveles,
+						_departamentos : departamentos
+					};
+					resolve(response);
+				})
+				.catch((err) => {
+					reject(err);
+				});
+		}, 500);
+	});
+};
+
+const queryNRCInfo = (options) => {
+	return new Promise((resolve, reject) => {
+		setTimeout(() => {
+			rp(options)
+				.then((html) => {
+					let days = [];
+					let nombre = $('p.msg1 b', html).text().toString().slice(1);
+					let materia = '';
+					let grupo = '';
+					let arr = $($('p', html)[1]).text().toString().trim().split(':');
+					materia = arr[1].match(/[A-Z]{3} \d{4}/g)[0];
+					grupo = arr[2].match(/\d{2}/g)[0];
+					$('tr', html).each((i, el) => {
+						if (i > 0) {
+							let day = {
+								start   : '',
+								end     : '',
+								weekday : '',
+								hours   : '',
+								room    : ''
+							};
+							$('td', el).each((j, obj) => {
+								switch (j) {
+									case 0:
+										day.start = obj.children[0].data.slice(0, -1);
+										break;
+									case 1:
+										day.end = obj.children[0].data.slice(0, -1);
+										break;
+									case 3:
+										switch (obj.children[0].data) {
+											case 'M':
+												day.weekday = 'Lunes';
+												break;
+											case 'T':
+												day.weekday = 'Martes';
+												break;
+											case 'W':
+												day.weekday = 'Miercoles';
+												break;
+											case 'R':
+												day.weekday = 'Jueves';
+												break;
+											case 'F':
+												day.weekday = 'Viernes';
+												break;
+											case 'S':
+												day.weekday = 'Sabado';
+												break;
+										}
+										break;
+									case 4:
+										day.hours = obj.children[0].data;
+										break;
+									case 5:
+										day.room = obj.children[0].data;
+										break;
+								}
+							});
+							days.push(day);
+						}
+					});
+					let res = {
+						materia : materia,
+						nombre  : nombre,
+						grupo   : grupo,
+						dias    : days
+					};
+					resolve(res);
+				})
+				.catch((err) => {
+					reject(err);
+				});
+		}, rng(1, 2));
+	});
+};
+
+const queryDepartmentInfo = (options) => {
+	return new Promise((resolve, reject) => {
+		setTimeout(() => {
+			rp(options)
+				.then((html) => {
+					let nrcs = [];
+					let nrc_number = '';
+					let n_options, res;
+					$('#programa option', html).each(async (i, el) => {
+						if (i > 0) {
+							nrc_number = el.attribs.value.toString().split('-')[0].trim();
+							nrcs.push(nrc_number);
+						}
+					});
+					resolve(nrcs);
+				})
+				.catch((err) => {
+					reject(err);
+				});
+		}, rng(1, 2));
+	});
+};
+
+querySemesterInfo()
+	.then(async (response) => {
+		console.log('PERIODO: ' + response._periodo);
+		console.log('NIVELES: ' + response._niveles.length);
+		console.log('DEPARTAMENTOS: ' + response._departamentos.length);
+		console.log('------------------------------------------------');
+		let nombre_periodo = '';
+		let coincidencia = response._periodo.match(/\d{4}/g);
+		let semestre = response._periodo.slice(4);
+		semestre == '10' ? (nombre_periodo = 'Primer Semestre ' + coincidencia) : '';
+		semestre == '30' ? (nombre_periodo = 'Segundo Semestre ' + coincidencia) : '';
+		let nombre_nivel = '';
+		for (let nivel of response._niveles) {
+			nivel === 'PR' ? (nombre_nivel = 'Pregrado') : '';
+			nivel === 'PG' ? (nombre_nivel = 'Postgrado') : '';
+			nivel === 'EC' ? (nombre_nivel = 'Educación Continua') : '';
+			nivel === 'EX' ? (nombre_nivel = 'Extracurricular') : '';
+			console.log('Nivel: ' + nombre_nivel);
+			for (let departamento of response._departamentos) {
+				let d_options = {
+					method   : 'POST',
+					uri      : _DOMAIN + 'resultado_departamento1.php',
+					formData : {
+						departamento  : departamento,
+						valida        : 'OK',
+						datos_periodo : response._periodo,
+						nom_periodo   : nombre_periodo,
+						datos_nivel   : nivel,
+						nom_nivel     : nombre_nivel,
+						BtnNRC        : 'NRC'
+					}
+				};
+				console.log('\tDepartamento: ' + departamento);
+				let numbers = await queryDepartmentInfo(d_options);
+				for (number of numbers) {
+					console.log('\t\tNRC: ' + number);
+					let n_options = {
+						method   : 'POST',
+						uri      : _DOMAIN + 'acreditaciones_resultado.php',
+						formData : {
+							elegido : number,
+							periodo : response._periodo
+						}
+					};
+					let res = await queryNRCInfo(n_options);
+					for (let dia of res.dias) {
+						let lesson = {
+							periodo      : response._periodo,
+							nivel        : nombre_nivel,
+							departamento : departamento,
+							nrc          : number,
+							materia      : res.materia,
+							grupo        : res.grupo,
+							fecha_inicio : dia.start,
+							fecha_fin    : dia.end,
+							dia_semana   : dia.weekday,
+							horas        : dia.hours,
+							salon        : dia.room
+						};
+						lessons.push(lesson);
+					}
+					console.log('\t\t\tClases en total: ' + lessons.length);
+				}
+			}
+		}
+		let lessons_JSON = JSON.stringify(lessons);
+		fs
+			.writeFile(filePath, lessons_JSON, 'utf8', (err) => {
+				if (err) {
+					console.log('An error occured while writing JSON Object to File.');
+					return console.log(err);
+				}
+			})
+			.then(() => {
+				console.log('ARCHIVO CREADO!');
+			});
+	})
+	.catch((err) => {
+		console.log(err);
+	});
