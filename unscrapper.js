@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const rp = require('request-promise');
 const $ = require('cheerio');
-const _DOMAIN = '';
+const _DOMAIN = 'https://guayacan.uninorte.edu.co/registro_pruebas/';
 const _SCHEDULE = 'consulta_horarios.asp';
 const filePath = path.join(__dirname, 'lessons.json');
 
@@ -54,69 +54,117 @@ const queryNRCInfo = (options) => {
 		setTimeout(() => {
 			rp(options)
 				.then((html) => {
-					let days = [];
-					let nombre = $('p.msg1 b', html).text().toString().slice(1);
-					let materia = '';
-					let grupo = '';
-					let arr = $($('p', html)[1]).text().toString().trim().split(':');
-					materia = arr[1].match(/[A-Z]{3} \d{4}/g)[0];
-					grupo = arr[2].match(/\d{2}/g)[0];
-					$('tr', html).each((i, el) => {
-						if (i > 0) {
-							let day = {
-								start   : '',
-								end     : '',
-								weekday : '',
-								hours   : '',
-								room    : ''
-							};
-							$('td', el).each((j, obj) => {
-								switch (j) {
-									case 0:
-										day.start = obj.children[0].data.slice(0, -1);
-										break;
-									case 1:
-										day.end = obj.children[0].data.slice(0, -1);
-										break;
-									case 3:
-										switch (obj.children[0].data) {
-											case 'M':
-												day.weekday = 'Lunes';
-												break;
-											case 'T':
-												day.weekday = 'Martes';
-												break;
-											case 'W':
-												day.weekday = 'Miercoles';
-												break;
-											case 'R':
-												day.weekday = 'Jueves';
-												break;
-											case 'F':
-												day.weekday = 'Viernes';
-												break;
-											case 'S':
-												day.weekday = 'Sabado';
-												break;
-										}
-										break;
-									case 4:
-										day.hours = obj.children[0].data;
-										break;
-									case 5:
-										day.room = obj.children[0].data;
-										break;
+					let res;
+					if ($('div div div', html).children().length > 0) {
+						let days = [];
+						let multiple_lessons = false;
+						let weekdays = [];
+						let nombre = $('p.msg1 b', html).text().toString().slice(1);
+						let materia = '';
+						let grupo = '';
+						let arr = $($('p', html)[1]).text().toString().trim().split(':');
+						materia = arr[1].match(/[A-Z]{3} \d{4}/g)[0];
+						grupo = arr[2].match(/\d{2}/g)[0];
+						$('tr', html).each((i, el) => {
+							if (i > 0) {
+								let day = {
+									start   : '',
+									end     : '',
+									weekday : '',
+									hours   : '',
+									room    : ''
+								};
+								weekdays = [];
+								$('td', el).each((j, obj) => {
+									switch (j) {
+										case 0:
+											day.start = obj.children[0].data.slice(0, -1);
+											break;
+										case 1:
+											day.end = obj.children[0].data.slice(0, -1);
+											break;
+										case 3:
+											if (obj.children[0] != undefined) {
+												if (obj.children[0].data.length == 1) {
+													switch (obj.children[0].data) {
+														case 'M':
+															day.weekday = 'Lunes';
+															break;
+														case 'T':
+															day.weekday = 'Martes';
+															break;
+														case 'W':
+															day.weekday = 'Miercoles';
+															break;
+														case 'R':
+															day.weekday = 'Jueves';
+															break;
+														case 'F':
+															day.weekday = 'Viernes';
+															break;
+														case 'S':
+															day.weekday = 'Sabado';
+															break;
+													}
+												} else {
+													multiple_lessons = true;
+													let letters = obj.children[0].data.toString().split('');
+													for (letter of letters) {
+														switch (letter) {
+															case 'M':
+																weekdays.push('Lunes');
+																break;
+															case 'T':
+																weekdays.push('Martes');
+																break;
+															case 'W':
+																weekdays.push('Miercoles');
+																break;
+															case 'R':
+																weekdays.push('Jueves');
+																break;
+															case 'F':
+																weekdays.push('Viernes');
+																break;
+															case 'S':
+																weekdays.push('Sabado');
+																break;
+														}
+													}
+												}
+											} else {
+												day.weekday = '';
+											}
+											break;
+										case 4:
+											day.hours = obj.children[0].data;
+											break;
+										case 5:
+											day.room = obj.children[0].data;
+											break;
+									}
+								});
+								let temp_day;
+								if (weekdays.length == 0) {
+									days.push(day);
+								} else {
+									for (let weekday of weekdays) {
+										temp_day = day;
+										temp_day.weekday = weekday;
+										days.push(temp_day);
+									}
 								}
-							});
-							days.push(day);
-						}
-					});
-					let res = {
-						materia : materia,
-						nombre  : nombre,
-						grupo   : grupo,
-						dias    : days
-					};
+							}
+						});
+						res = {
+							materia : materia,
+							nombre  : nombre,
+							grupo   : grupo,
+							dias    : days
+						};
+					} else {
+						res = undefined;
+					}
 					resolve(res);
 				})
 				.catch((err) => {
@@ -194,21 +242,23 @@ querySemesterInfo()
 						}
 					};
 					let res = await queryNRCInfo(n_options);
-					for (let dia of res.dias) {
-						let lesson = {
-							periodo      : response._periodo,
-							nivel        : nombre_nivel,
-							departamento : departamento,
-							nrc          : number,
-							materia      : res.materia,
-							grupo        : res.grupo,
-							fecha_inicio : dia.start,
-							fecha_fin    : dia.end,
-							dia_semana   : dia.weekday,
-							horas        : dia.hours,
-							salon        : dia.room
-						};
-						lessons.push(lesson);
+					if (res != undefined) {
+						for (let dia of res.dias) {
+							let lesson = {
+								periodo      : response._periodo,
+								nivel        : nombre_nivel,
+								departamento : departamento,
+								nrc          : number,
+								materia      : res.materia,
+								grupo        : res.grupo,
+								fecha_inicio : dia.start,
+								fecha_fin    : dia.end,
+								dia_semana   : dia.weekday,
+								horas        : dia.hours,
+								salon        : dia.room
+							};
+							lessons.push(lesson);
+						}
 					}
 					console.log('\t\t\tClases en total: ' + lessons.length);
 				}
