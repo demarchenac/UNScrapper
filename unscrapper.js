@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const rp = require('request-promise');
 const $ = require('cheerio');
-const _DOMAIN = 'https://guayacan.uninorte.edu.co/registro_pruebas/';
-const _SCHEDULE = 'consulta_horarios.asp';
-const filePath = path.join(__dirname, 'lessons.json');
+const _DOMAIN = '';
+const _SCHEDULE = '';
+const filePath = path.join(__dirname, '');
 
 var lessons = [];
 
@@ -64,7 +64,7 @@ const queryNRCInfo = (options) => {
 						let grupo = '';
 						let arr = $($('p', html)[1]).text().toString().trim().split(':');
 						materia = arr[1].match(/[A-Z]{3} \d{4}/g)[0];
-						grupo = arr[2].match(/\d{2}/g)[0];
+						grupo = arr[2].match(/\d{2}/g) == null ? '00' : arr[2].match(/\d{2}/g)[0];
 						$('tr', html).each((i, el) => {
 							if (i > 0) {
 								let day = {
@@ -199,10 +199,6 @@ const queryDepartmentInfo = (options) => {
 
 querySemesterInfo()
 	.then(async (response) => {
-		console.log('PERIODO: ' + response._periodo);
-		console.log('NIVELES: ' + response._niveles.length);
-		console.log('DEPARTAMENTOS: ' + response._departamentos.length);
-		console.log('------------------------------------------------');
 		let nombre_periodo = '';
 		let coincidencia = response._periodo.match(/\d{4}/g);
 		let semestre = response._periodo.slice(4);
@@ -214,7 +210,6 @@ querySemesterInfo()
 			nivel === 'PG' ? (nombre_nivel = 'Postgrado') : '';
 			nivel === 'EC' ? (nombre_nivel = 'Educación Continua') : '';
 			nivel === 'EX' ? (nombre_nivel = 'Extracurricular') : '';
-			console.log('Nivel: ' + nombre_nivel);
 			for (let departamento of response._departamentos) {
 				let d_options = {
 					method   : 'POST',
@@ -229,10 +224,8 @@ querySemesterInfo()
 						BtnNRC        : 'NRC'
 					}
 				};
-				console.log('\tDepartamento: ' + departamento);
 				let numbers = await queryDepartmentInfo(d_options);
 				for (number of numbers) {
-					console.log('\t\tNRC: ' + number);
 					let n_options = {
 						method   : 'POST',
 						uri      : _DOMAIN + 'acreditaciones_resultado.php',
@@ -260,21 +253,16 @@ querySemesterInfo()
 							lessons.push(lesson);
 						}
 					}
-					console.log('\t\t\tClases en total: ' + lessons.length);
 				}
 			}
 		}
 		let lessons_JSON = JSON.stringify(lessons);
-		fs
-			.writeFile(filePath, lessons_JSON, 'utf8', (err) => {
-				if (err) {
-					console.log('An error occured while writing JSON Object to File.');
-					return console.log(err);
-				}
-			})
-			.then(() => {
-				console.log('ARCHIVO CREADO!');
-			});
+		fs.writeFile(filePath, lessons_JSON, 'utf8', (err) => {
+			if (err) {
+				console.log('An error occured while writing JSON Object to File.');
+				return console.log(err);
+			}
+		});
 	})
 	.catch((err) => {
 		console.log(err);
