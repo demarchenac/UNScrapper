@@ -4,7 +4,7 @@
   "description": "Scrapper for UN rooms",
   "main": "scrapper.js",
   "scripts": {
-    "start": "node unscrapper.js"
+    "start": "nodemon -r esm app.js"
   },
   "repository": {
     "type": "git",
@@ -23,10 +23,17 @@
   },
   "homepage": "https://github.com/CDDemar/UNScrapper#readme",
   "dependencies": {
+    "body-parser": "^1.19.0",
     "cheerio": "^1.0.0-rc.2",
+    "dotenv": "^8.1.0",
+    "esm": "^3.2.25",
+    "express": "^4.17.1",
     "firebase": "^5.9.4",
     "puppeteer": "^1.13.0",
     "request": "^2.88.0",
     "request-promise": "^4.2.4"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.3"
   }
 }

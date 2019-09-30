@@ -3,3 +3,4 @@ NRCs.txt
 LICENSE
 lessons-prod.json
 rooms-prod.json
+.env
