@@ -1,12 +1,14 @@
 import $ from 'cheerio';
 import request from 'request-promise';
 import { Option } from './option';
+import { Lesson } from './lesson';
 
 
 class Scrapper{
     constructor(){
         this.METADATA = process.env.METADATA;
         this.DEPARTMENT = process.env.DEPARTMENT;
+        this.COURSE = process.env.COURSE;
         this.periods = [];
         this.departments = [];
         this.levels = [];
@@ -14,6 +16,12 @@ class Scrapper{
 
     rng(min, max){
         return 1000 *Math.ceil(Math.random * (max -min) +min);
+    }
+
+    async wait(min, max){
+        setTimeout(() => {
+            return Promise.resolve(true);
+        }, this.rng(min, max));
     }
 
     async obtainSearchMetadata(){
@@ -81,13 +89,10 @@ class Scrapper{
             courses: []
         };
 
-        console.log(options);
-
         try{
             const html = await request(options);
             $('#programa option', html).each((index, element) => {
                 if(index > 0){
-                    console.log(new Option(element.attribs.value, element.children[0].data));
                     response.courses.push(new Option(element.attribs.value, element.children[0].data));
                 }
             });
@@ -95,6 +100,55 @@ class Scrapper{
             return Promise.resolve(response);
         }catch(error){
             Promise.reject(error);
+        }
+    }
+
+    async obtainCourse(period, chosen){
+        const options = {
+            method: `POST`,
+            uri: this.COURSE,
+            form: {
+                periodo: `${period}`,
+                elegido: `${chosen}`
+            }
+        };
+
+        let response = {
+            period: period,
+            course_code: chosen,
+            schedule: []
+        };
+
+        try{
+            const html = await request(options);
+            const rowCount = $('tr', html).length;
+            let element;
+
+            for(let index = 1; index < rowCount; index ++){
+                element = $('tr', html).eq(index);
+                response.schedule.push(new Lesson(
+                    $('td', element).eq(0).text(),
+                    $('td', element).eq(1).text(),
+                    $('td', element).eq(2).text(),
+                    $('td', element).eq(3).text(),
+                    $('td', element).eq(4).text(),
+                    $('td', element).eq(5).text(),
+                ));
+            }
+
+            return Promise.resolve(response);
+        }catch(error){
+            Promise.reject(error);
+        }
+    }
+
+    async obtainDepartmentCoursesInfo(period, level, department){
+        const departments = await this.obtainDepartmentCourses(period, level, department);
+        console.log(departments);
+        for(const course in departments.courses){
+            console.log('!'); 
+            await this.wait(4, 5);
+            console.log(course); 
         }
     }
 }

@@ -26,4 +26,18 @@ ScheduleController.route('/obtainDepartmentCourses').post(async (req, res) => {
     res.json(response);
 });
 
+ScheduleController.route('/obtainCourse').post(async (req, res) => {
+    const response = await scrapper
+        .obtainCourse(req.body.period, req.body.course_code);
+    res.json(response);
+});
+
+ScheduleController.route('/obtainDepartmentCoursesInfo').post(async (req, res) => {
+    const response = await scrapper
+        .obtainDepartmentCoursesInfo(req.body.period, req.body.level, req.body.department);
+    res.json(response);
+});
+
+ScheduleController
+
 module.exports = ScheduleController;
