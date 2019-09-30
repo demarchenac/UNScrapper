@@ -12,16 +12,20 @@ class Scrapper{
         this.periods = [];
         this.departments = [];
         this.levels = [];
+        this.courses = [];
     }
 
     rng(min, max){
-        return 1000 *Math.ceil(Math.random * (max -min) +min);
+        return 1000 *Math.ceil(Math.random() * (max -min) +min);
     }
 
-    async wait(min, max){
-        setTimeout(() => {
-            return Promise.resolve(true);
-        }, this.rng(min, max));
+    async delayedCoruseCall(period, course_code, value, length, min, max){
+        return new Promise((resolve, reject) => {
+            setTimeout(async () => {
+                console.log(`Requesting ${course_code} info @ ${period} ...(${parseInt(value +1)}/${length})`);
+                resolve(await this.obtainCourse(period, course_code));
+            }, 1000);
+        });
     }
 
     async obtainSearchMetadata(){
@@ -119,37 +123,60 @@ class Scrapper{
             schedule: []
         };
 
+        let html;
+        let success = true; 
+        let maxAttempts = 3;
         try{
-            const html = await request(options);
-            const rowCount = $('tr', html).length;
-            let element;
-
-            for(let index = 1; index < rowCount; index ++){
-                element = $('tr', html).eq(index);
-                response.schedule.push(new Lesson(
-                    $('td', element).eq(0).text(),
-                    $('td', element).eq(1).text(),
-                    $('td', element).eq(2).text(),
-                    $('td', element).eq(3).text(),
-                    $('td', element).eq(4).text(),
-                    $('td', element).eq(5).text(),
-                ));
-            }
-
-            return Promise.resolve(response);
+            html = await request(options);
         }catch(error){
-            Promise.reject(error);
+            success = false;
+            let attempt = 0;
+            while(success && (attempt < maxAttempts)){
+                try{
+                    html = await request(options);
+                    success = true;
+                }catch(error){
+                    attempt++;
+                }
+            }
+            if(!success){
+                Promise.reject(error);
+            }
         }
+
+        const rowCount = $('tr', html).length;
+        let element;
+
+        for(let index = 1; index < rowCount; index ++){
+            element = $('tr', html).eq(index);
+            response.schedule.push(new Lesson(
+                $('td', element).eq(0).text(),
+                $('td', element).eq(1).text(),
+                $('td', element).eq(2).text(),
+                $('td', element).eq(3).text(),
+                $('td', element).eq(4).text(),
+                $('td', element).eq(5).text(),
+            ));
+        }
+
+        return Promise.resolve(response);
     }
 
     async obtainDepartmentCoursesInfo(period, level, department){
+        let courses = [];
         const departments = await this.obtainDepartmentCourses(period, level, department);
-        console.log(departments);
-        for(const course in departments.courses){
-            console.log('!'); 
-            await this.wait(4, 5);
-            console.log(course); 
+        for(let course = 0; course < departments.courses.length; course++){
+            const courseInfo = await this.delayedCoruseCall(
+                period, 
+                departments.courses[course].value, 
+                course, 
+                departments.courses.length, 
+                1, 
+                3
+            ); 
+            courses.push(courseInfo);
         }
+        return Promise.resolve(courses);
     }
 }
 
