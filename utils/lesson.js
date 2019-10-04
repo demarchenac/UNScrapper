@@ -39,7 +39,9 @@ class Lesson{
             result = (parseInt(result) +1).toString();
         }else if(result[result.length  -1] === '8'){
             result = (parseInt(result) +2).toString();
-        } 
+        }else if(result[result.length  -1] === '7'){
+            result = (parseInt(result) +3).toString();
+        }
         return result;
     }
 

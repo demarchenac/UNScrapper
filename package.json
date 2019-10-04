@@ -6,6 +6,9 @@
   "scripts": {
     "start": "nodemon -r esm app.js"
   },
+  "nodemonConfig": {
+    "ignore": ["FILES/*"]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/CDDemar/UNScrapper.git"
@@ -29,6 +32,7 @@
     "esm": "^3.2.25",
     "express": "^4.17.1",
     "firebase": "^5.9.4",
+    "mkdirp": "^0.5.1",
     "puppeteer": "^1.13.0",
     "request": "^2.88.0",
     "request-promise": "^4.2.4"
