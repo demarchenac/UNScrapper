@@ -50,4 +50,10 @@ ScheduleController.route('/obtainPeriodCoursesInfo').post(async (req, res) => {
     res.json(response);
 });
 
+ScheduleController.route('/obtainSupportLinks').get(async (req, res) => {
+    const response = await scrapper
+        .obtainSupportLinks();
+    res.json(response);
+});
+
 module.exports = ScheduleController;

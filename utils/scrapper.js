@@ -11,6 +11,7 @@ class Scrapper{
         this.METADATA = process.env.METADATA;
         this.DEPARTMENT = process.env.DEPARTMENT;
         this.COURSE = process.env.COURSE;
+        this.ACADEMY_SUPPORT = process.env.ACADEMY_SUPPORT;
         this.periods = [];
         this.departments = [];
         this.levels = [];
@@ -249,6 +250,29 @@ class Scrapper{
             courses = JSON.parse(jsonString);
         }
         return Promise.resolve(courses);
+    }
+
+    async obtainSupportLinks(){
+        let supportLinks = [];
+
+        const options = {
+            method: `GET`,
+            uri: this.ACADEMY_SUPPORT,
+            headers: {
+                "cache-control": "no-cache",
+                "Connection": "keep-alive",
+                "Cache-Control": "no-cache",
+                "Accept": "*/*"
+            }
+        };
+
+        try{
+            const html = await request(options);
+            console.log(html);
+            return Promise.resolve(supportLinks);
+        }catch(error){
+            Promise.reject(error);
+        }
     }
 }
 
