@@ -32,7 +32,7 @@
     "cheerio": "^1.0.0-rc.2",
     "dotenv": "^8.1.0",
     "esm": "^3.2.25",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "firebase": "^5.9.4",
     "mkdirp": "^0.5.1",
     "puppeteer": "^1.20.0",
